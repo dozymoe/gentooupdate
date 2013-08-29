@@ -6,10 +6,10 @@ all:
 fetch: flags/portage-fetch
 	
 
-update_server: flags/portage-upgrade-full update_misc | flags/kernel-hardened-upgrade
+update_server: flags/kernel-hardened-upgrade | flags/portage-upgrade-full update_misc
 	
 
-update_local: flags/portage-upgrade-full update_misc | flags/kernel-pfsource-upgrade
+update_local: flags/kernel-pfsource-upgrade | flags/portage-upgrade-full update_misc
 	
 
 update_misc: flags/nodejs-upgrade flags/pip-upgrade flags/rubygem-upgrade
@@ -48,15 +48,14 @@ flags/kernel-pfsource-upgrade: flags/kernel-pfsource-config-backup
 flags/kernel-hardened-upgrade: flags/kernel-hardened-config-backup
 	emerge -uN --with-bdeps=y sys-kernel/hardened-sources && \
 	cp /usr/src/kernel-hardened-config /usr/src/linux/.config && \
-	touch flags/kernel-hardened-upgrade && \
 	yes "" | make -C /usr/src/linux silentoldconfig && \
+	touch flags/kernel-hardened-upgrade
+flags/kernel-upgrade:
 	make -C /usr/src/linux && \
 	make -C /usr/src/linux install && \
 	make -C /usr/src/linux modules_install && \
 	python bin/kernel_cleanup && \
-	touch flags/kernel-upgrade
-flags/kernel-upgrade:
-	
+	touch flags/kernel-upgrade	
 flags/portage-upgrade: flags/portage-fetch flags/kernel-upgrade /etc/portage/make.conf
 	emerge -uDN --with-bdeps=y @world && emerge @module-rebuild @x11-module-rebuild && touch flags/portage-upgrade
 	emerge -c
