@@ -1,15 +1,18 @@
-.PHONY: fetch update_server update_local update_misc
+.PHONY: fetch update update_server update_local update_misc
 
 all:
-	@echo 'make targets: fetch, update_server, update_local, update_misc'
+	@echo 'make targets: fetch, update, update_server, update_local, update_misc'
 
 fetch: flags/portage-fetch
 	
 
-update_server: flags/kernel-hardened-upgrade | flags/portage-upgrade-full update_misc
+update: flags/portage-upgrade-full update_misc
 	
 
-update_local: flags/kernel-pfsource-upgrade | flags/portage-upgrade-full update_misc
+update_server: flags/kernel-hardened-upgrade | flags/kernel-upgrade update
+	
+
+update_local: flags/kernel-pfsource-upgrade | flags/kernel-upgrade update
 	
 
 update_misc: flags/nodejs-upgrade flags/pip-upgrade flags/rubygem-upgrade
@@ -56,7 +59,7 @@ flags/kernel-upgrade:
 	make -C /usr/src/linux modules_install && \
 	python bin/kernel_cleanup && \
 	touch flags/kernel-upgrade	
-flags/portage-upgrade: flags/portage-fetch flags/kernel-upgrade /etc/portage/make.conf
+flags/portage-upgrade: flags/portage-fetch /etc/portage/make.conf
 	emerge -uDN --with-bdeps=y @world && emerge @module-rebuild @x11-module-rebuild && touch flags/portage-upgrade
 	emerge -c
 flags/portage-clean: flags/portage-upgrade
