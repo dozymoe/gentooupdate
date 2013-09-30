@@ -2,84 +2,88 @@
 
 import re, os, subprocess, sys
 
-package = sys.argv[1]
+out,err = subprocess.Popen('eix --installed --only-names sys-kernel/*-sources', shell=True, stdout=subprocess.PIPE).communicate()
+packages = out.splitlines()
 
-out,err = subprocess.Popen('equery -q list %s' % package, shell=True, stdout=subprocess.PIPE).communicate()
-installed = out.splitlines()
-installed_count = len(installed)
-install_package = installed[installed_count - 1]
+for package in packages:
+  print('Updating package %s...' % package)
+  if not os.system('emerge -uN --with-bdeps=y %s' % package):
+    exit(1)
 
-if installed_count > 1:
-  installed_prev = installed[installed_count - 2]
-else:
-  installed_prev = False
+  out,err = subprocess.Popen('equery -q list %s' % package, shell=True, stdout=subprocess.PIPE).communicate()
+  installed = out.splitlines()
+  installed_count = len(installed)
+  install_package = installed[installed_count - 1]
 
-for pkg in installed:
-  myre = re.compile(r'/(?P<type>.*?)-sources-(?P<version>[\d\.]+)(?P<extended>.*)')
-  match = re.search(myre, pkg)
-
-  pkg_src_type = match.group('type')
-  
-  pkg_src_name = '%s-%s%s' % (match.group('version'), match.group('type'), match.group('extended'))
-  usr_src_path = '/usr/src/linux-%s' % pkg_src_name
-  config_path  = '%s/.config' % usr_src_path
-
-  if os.path.exists(config_path):
-    print('backup .config from %s...' % usr_src_path)
-    os.system('cp %s /usr/src/kernel-%s.config' % (config_path, pkg_src_type))
+  if installed_count > 1:
+    installed_prev = installed[installed_count - 2]
   else:
-    print('restore .config to %s...' % usr_src_path)
-    if os.system('cp /usr/src/kernel-%s.config %s' % (pkg_src_type, config_path)):
-      exit(1)
+    installed_prev = False
 
-  if pkg == install_package:
-    print('make oldconfig on %s...' % usr_src_path)
-    if os.system('yes "" | make -C %s silentoldconfig' % usr_src_path):
-      exit(1)
-    print('make on %s...' % usr_src_path)
-    if os.system('make -C %s -j8' % usr_src_path):
-      exit(1)
-    print('make install on %s...' % usr_src_path)
-    if os.system('make -C %s install' % usr_src_path):
-      exit(1)
-    print('make modules_install on %s...' % usr_src_path)
-    if os.system('make -C %s modules_install' % usr_src_path):
-      exit(1)
+  for pkg in installed:
+    myre = re.compile(r'/(?P<type>.*?)-sources-(?P<version>[\d\.]+)(?P<extended>.*)')
+    match = re.search(myre, pkg)
 
+    pkg_src_type = match.group('type')
+	  
+    pkg_src_name = '%s-%s%s' % (match.group('version'), match.group('type'), match.group('extended'))
+    usr_src_path = '/usr/src/linux-%s' % pkg_src_name
+    config_path  = '%s/.config' % usr_src_path
 
-    src_symlink = '/usr/src/%s' % pkg_src_type
-    print('create symlink %s...' % src_symlink)
-    if os.path.exists(src_symlink):
-      os.system('rm %s' % src_symlink)
-    if os.system('ln -s %s %s' % (usr_src_path, src_symlink)):
-      exit(1)
+    if os.path.exists(config_path):
+      print('backup .config from %s...' % usr_src_path)
+      os.system('cp %s /usr/src/kernel-%s.config' % (config_path, pkg_src_type))
+    else:
+      print('restore .config to %s...' % usr_src_path)
+      if os.system('cp /usr/src/kernel-%s.config %s' % (pkg_src_type, config_path)):
+        exit(1)
+    if pkg == install_package:
+      print('make oldconfig on %s...' % usr_src_path)
+      if os.system('yes "" | make -C %s silentoldconfig' % usr_src_path):
+        exit(1)
+      print('make on %s...' % usr_src_path)
+      if os.system('make -C %s -j8' % usr_src_path):
+        exit(1)
+      print('make install on %s...' % usr_src_path)
+      if os.system('make -C %s install' % usr_src_path):
+        exit(1)
+      print('make modules_install on %s...' % usr_src_path)
+      if os.system('make -C %s modules_install' % usr_src_path):
+        exit(1)
 
-    boot_symlink = '/boot/%s' % pkg_src_type
-    print('create symlink %s...' % boot_symlink)
-    if os.path.exists(boot_symlink):
-      os.system('rm %s' % boot_symlink)
-    if os.system('ln -s vmlinuz-%s %s' % (pkg_src_name, boot_symlink)):
-      exit(1)
-  elif pkg == installed_prev:
-    boot_symlink = '/boot/%s.old' % pkg_src_type
-    print('create symlink %s...' % boot_symlink)
-    if os.path.exists(boot_symlink):
-      os.system('rm %s' % boot_symlink)
-    if os.system('ln -s vmlinuz-%s %s' % (pkg_src_name, boot_symlink)):
-      exit(1)
-  else:
-    print('uninstall %s...' % pkg)
-    os.system('emerge -c --quiet-build y =%s' % pkg)
-    print('cleanup /boot...')
-    os.system('rm /boot/*%s*' % pkg_src_name)
-    print('cleanup %s...' % usr_src_path)
-    if os.path.exists(usr_src_path):
-      os.system('rm -rf %s' % usr_src_path)
+      src_symlink = '/usr/src/%s' % pkg_src_type
+      print('create symlink %s...' % src_symlink)
+      if os.path.exists(src_symlink):
+        os.system('rm %s' % src_symlink)
+      if os.system('ln -s %s %s' % (usr_src_path, src_symlink)):
+        exit(1)
 
-    modules_path = '/lib/modules/%s' % pkg_src_name
-    print('cleanup %s...' % modules_path)
-    if os.path.exists(modules_path):
-      os.system('rm -rf %s' % modules_path)
+      boot_symlink = '/boot/%s' % pkg_src_type
+      print('create symlink %s...' % boot_symlink)
+      if os.path.exists(boot_symlink):
+        os.system('rm %s' % boot_symlink)
+      if os.system('ln -s vmlinuz-%s %s' % (pkg_src_name, boot_symlink)):
+        exit(1)
+    elif pkg == installed_prev:
+      boot_symlink = '/boot/%s.old' % pkg_src_type
+      print('create symlink %s...' % boot_symlink)
+      if os.path.exists(boot_symlink):
+        os.system('rm %s' % boot_symlink)
+      if os.system('ln -s vmlinuz-%s %s' % (pkg_src_name, boot_symlink)):
+        exit(1)
+    else:
+      print('uninstall %s...' % pkg)
+      os.system('emerge -c --quiet-build y =%s' % pkg)
+      print('cleanup /boot...')
+      os.system('rm /boot/*%s*' % pkg_src_name)
+      print('cleanup %s...' % usr_src_path)
+      if os.path.exists(usr_src_path):
+        os.system('rm -rf %s' % usr_src_path)
+ 
+      modules_path = '/lib/modules/%s' % pkg_src_name
+      print('cleanup %s...' % modules_path)
+      if os.path.exists(modules_path):
+        os.system('rm -rf %s' % modules_path)
 
 exit(0)
 
