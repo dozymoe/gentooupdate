@@ -47,7 +47,7 @@ flags/kernel-upgrade: flags/portage-fetch /usr/bin/eix /usr/bin/equery
 
 flags/portage-upgrade: flags/portage-fetch
 	emerge -c
-	emerge -uDN --with-bdeps=y @world && emerge @module-rebuild @x11-module-rebuild && touch flags/portage-upgrade
+	emerge -uDN --quiet-build=y --with-bdeps=y @world && emerge @module-rebuild @x11-module-rebuild && touch flags/portage-upgrade
 
 flags/portage-clean: flags/portage-upgrade
 	emerge -c && touch flags/portage-clean

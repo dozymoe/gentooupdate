@@ -7,7 +7,7 @@ packages = out.splitlines()
 
 for package in packages:
   print('Updating package %s...' % package)
-  if not os.system('emerge -uN --with-bdeps=y %s' % package):
+  if os.system('emerge -uN --with-bdeps=y %s' % package):
     exit(1)
 
   out,err = subprocess.Popen('equery -q list %s' % package, shell=True, stdout=subprocess.PIPE).communicate()
@@ -30,7 +30,7 @@ for package in packages:
     usr_src_path = '/usr/src/linux-%s' % pkg_src_name
     config_path  = '%s/.config' % usr_src_path
 
-    if os.path.exists(config_path):
+    if os.path.lexists(config_path):
       print('backup .config from %s...' % usr_src_path)
       os.system('cp %s /usr/src/kernel-%s.config' % (config_path, pkg_src_type))
     else:
@@ -53,21 +53,21 @@ for package in packages:
 
       src_symlink = '/usr/src/%s' % pkg_src_type
       print('create symlink %s...' % src_symlink)
-      if os.path.exists(src_symlink):
+      if os.path.lexists(src_symlink):
         os.system('rm %s' % src_symlink)
       if os.system('ln -s %s %s' % (usr_src_path, src_symlink)):
         exit(1)
 
       boot_symlink = '/boot/%s' % pkg_src_type
       print('create symlink %s...' % boot_symlink)
-      if os.path.exists(boot_symlink):
+      if os.path.lexists(boot_symlink):
         os.system('rm %s' % boot_symlink)
       if os.system('ln -s vmlinuz-%s %s' % (pkg_src_name, boot_symlink)):
         exit(1)
     elif pkg == installed_prev:
       boot_symlink = '/boot/%s.old' % pkg_src_type
       print('create symlink %s...' % boot_symlink)
-      if os.path.exists(boot_symlink):
+      if os.path.lexists(boot_symlink):
         os.system('rm %s' % boot_symlink)
       if os.system('ln -s vmlinuz-%s %s' % (pkg_src_name, boot_symlink)):
         exit(1)
@@ -77,87 +77,12 @@ for package in packages:
       print('cleanup /boot...')
       os.system('rm /boot/*%s*' % pkg_src_name)
       print('cleanup %s...' % usr_src_path)
-      if os.path.exists(usr_src_path):
+      if os.path.lexists(usr_src_path):
         os.system('rm -rf %s' % usr_src_path)
  
       modules_path = '/lib/modules/%s' % pkg_src_name
       print('cleanup %s...' % modules_path)
-      if os.path.exists(modules_path):
+      if os.path.lexists(modules_path):
         os.system('rm -rf %s' % modules_path)
 
 exit(0)
-
-import re, os
-
-kernel_package = 'pf-sources' 
-
-re_genkernel = re.compile(r'^(?:kernel|initramfs|System.map)-genkernel-(?P<arch>x86|x86_64)-(?P<major>\d+).(?P<minor>\d+).(?P<subminor>\d+)-(?P<source>[^.]+)(?P<backup>.old)?') 
-
-boot_files = os.listdir('/boot')
-print(boot_files)
-
-files = []
-for file in boot_files:
-	match = re.match(re_genkernel, file)
-	if (match):
-		match = match.groupdict()
-		if (match['backup']):
-			os.system('rm /boot/%s' % file)
-		else:
-			version = '%s.%s.%s' % (match['major'], match['minor'], match['subminor'])
-			tup = (int(match['major']), int(match['minor']), int(match['subminor']), version, match['arch'], match['source']) 
-			if not tup in files:
-				files.append(tup)
-
-print(files)
-files.sort(reverse=True)
-
-# Keep the last two kernel versions.
-for item in files[2:]:
-	kernel_version = '-genkernel-%s-%s-%s' % (item[4],item[3],item[5]) 
-	print(kernel_version)
-	
-	os.system('rm /boot/kernel%s' % kernel_version)
-	os.system('rm /boot/initramfs%s' % kernel_version)
-	os.system('rm /boot/System.map%s' % kernel_version)
-
-	try:
-		file = '/lib/modules/' + item[3] + '-pf';
-		os.stat(file)
-		os.system('rm -rf ' + file)
-		os.system('emerge -c =sys-kernel/%s-%s' % (kernel_package, item[3]))
-	except:
-		i = 1
-	
-	try:
-		file = '/usr/src/linux-%s-%s' % (item[3], item[5])  
-		print(file)
-		os.stat(file)
-		os.system('rm -rf ' + file)
-	except:
-		i = 1
-
-# Set kernel symlink to the latest.
-if (len(files) >= 1):
-	kernel_version = '-genkernel-%s-%s-%s' % (files[0][4],files[0][3],files[0][5]) 
-
-	os.system('rm /boot/kernel')
-	os.system('ln -s kernel%s /boot/kernel' % kernel_version)
-	os.system('rm /boot/initramfs')
-	os.system('ln -s initramfs%s /boot/initramfs' % kernel_version)
-	os.system('rm /boot/System.map')
-	os.system('ln -s System.map%s /boot/System.map' % kernel_version)
-
-# Set old kernel symlink to the oldest of the two.
-if (len(files) >= 2):
-	kernel_version = '-genkernel-%s-%s-%s' % (files[1][4],files[1][3],files[1][5]) 
-
-	os.system('rm /boot/kernel.old')
-	os.system('ln -s kernel%s /boot/kernel.old' % kernel_version)
-	os.system('rm /boot/initramfs.old')
-	os.system('ln -s initramfs%s /boot/initramfs.old' % kernel_version)
-	os.system('rm /boot/System.map.old')
-	os.system('ln -s System.map%s /boot/System.map.old' % kernel_version)
-
-
-#os.system('module-rebuild rebuild')
