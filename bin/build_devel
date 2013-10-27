@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+
+import os
+import subprocess
+
+out, err = subprocess.Popen('/usr/bin/emerge -uNpq --color=n --columns sys-devel/binutils', shell=True, stdout=subprocess.PIPE).communicate()
+if len(out):
+    res = os.system('/usr/bin/emerge -uDN sys-devel/binutils')
+    if not res:
+        res = os.system('/usr/bin/emerge -uN --nodeps sys-devel/binutils')
+
+    if not res:
+        exit(res)
+
+out, err = subprocess.Popen('/usr/bin/emerge -uNpq --color=n --columns sys-devel/gcc', shell=True, stdout=subprocess.PIPE).communicate()
+if len(out):
+    res = os.system('/usr/bin/emerge -uDN --with-bdeps=y sys-devel/gcc')
+    if not res:
+        exit(res)
+
+exit(0)

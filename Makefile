@@ -42,11 +42,14 @@ flags/portage-update: /usr/portage/metadata/timestamp
 flags/portage-fetch: flags/portage-update flags/layman-sync /etc/portage/make.conf | flags/eix-update
 	emerge -fuDN --with-bdeps=y @world && touch flags/portage-fetch
 
-flags/kernel-upgrade: flags/portage-fetch /usr/bin/eix /usr/bin/equery
+flags/build-tools-upgrade: flags/portage-fetch
+	python bin/build_devel && touch flags/build-tools-upgrade
+
+flags/kernel-upgrade: flags/portage-fetch /usr/bin/eix /usr/bin/equery flags/build-tools-upgrade
 	python bin/kernel_cleanup && touch flags/kernel-upgrade	
 
-flags/portage-upgrade: flags/portage-fetch
-	emerge -c
+flags/portage-upgrade: flags/portage-fetch flags/build-tools-upgrade
+	-emerge -c
 	emerge -uDN --quiet-build=y --with-bdeps=y @world && emerge @module-rebuild @x11-module-rebuild && touch flags/portage-upgrade
 
 flags/portage-clean: flags/portage-upgrade
