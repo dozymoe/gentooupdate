@@ -9,7 +9,7 @@ fetch: flags/portage-fetch
 update: flags/portage-upgrade-full
 	
 
-update_with_kernel: flags/kernel-upgrade | update
+update_with_kernel: flags/kernel-upgrade | update flags/portage-distfiles-clean
 	
 
 update_misc: flags/nodejs-upgrade flags/pip-upgrade flags/rubygem-upgrade
@@ -31,12 +31,19 @@ flags/layman-sync: flags/system-upgrade /usr/bin/layman
 /usr/bin/eix:
 	emerge eix
 
-/usr/bin/equery:
+/usr/bin/eclean-dist:
 	emerge gentoolkit
+
+/usr/bin/qlist:
+	emerge portage-utils
 
 flags/eix-update: /usr/portage/metadata/timestamp flags/layman-sync /usr/bin/eix
 	eix-update
 	touch flags/eix-update
+
+flags/portage-distfiles-clean: /usr/bin/eclean-dist flags/portage-upgrade-full
+	eclean-dist
+	touch flags/portage-distfiles-clean
 
 flags/portage-update: /usr/portage/metadata/timestamp
 	emerge -uN portage
@@ -50,7 +57,7 @@ flags/build-tools-upgrade: flags/portage-fetch
 	python bin/build_devel
 	touch flags/build-tools-upgrade
 
-flags/kernel-upgrade: flags/portage-fetch /usr/bin/eix /usr/bin/equery flags/build-tools-upgrade
+flags/kernel-upgrade: flags/portage-fetch /usr/bin/eix /usr/bin/qlist flags/build-tools-upgrade
 	python bin/kernel_cleanup
 	emerge @module-rebuild @x11-module-rebuild
 	touch flags/kernel-upgrade
@@ -87,4 +94,5 @@ flags/rubygem-upgrade: flags/portage-upgrade-full
 
 flags/python-update: flags/portage-upgrade-full
 	python-updater
+	perl-cleaner --all -- --backtrack=30
 	touch flags/python-update

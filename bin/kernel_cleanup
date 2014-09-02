@@ -10,7 +10,7 @@ for package in packages:
   if os.system('emerge -uN --with-bdeps=y %s' % package):
     exit(1)
 
-  out,err = subprocess.Popen('equery -q list %s' % package, shell=True, stdout=subprocess.PIPE).communicate()
+  out,err = subprocess.Popen('qlist -ICS %s' % package, shell=True, stdout=subprocess.PIPE).communicate()
   installed = out.splitlines()
   installed_count = len(installed)
   install_package = installed[installed_count - 1]
