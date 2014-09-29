@@ -11,7 +11,7 @@ for package in packages:
     exit(1)
 
   out,err = subprocess.Popen('qlist -ICS %s' % package, shell=True, stdout=subprocess.PIPE).communicate()
-  installed = out.splitlines()
+  installed = [pkg.replace(':', '-') for pkg in out.splitlines()]
   installed_count = len(installed)
   install_package = installed[installed_count - 1]
 
